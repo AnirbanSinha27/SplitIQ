@@ -29,7 +29,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
       email,
       password: hashedPassword,
     });
-  
+
+    const result = await fastify.db.query(
+      'INSERT INTO users (email, password) VALUES ($1, $2) RETURNING id, email',
+      [email, hashedPassword]
+    );
+
     return reply.status(201).send({
       message: 'User registered successfully',
     });
@@ -39,7 +44,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
   fastify.post('/login', async (request, reply) => {
     const { email, password } = request.body as any;
   
-    const user = users.find(u => u.email === email);
+    let user = users.find(u => u.email === email);
     if (!user) {
       return reply.status(401).send({ message: 'Invalid credentials' });
     }
@@ -60,6 +65,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
       JWT_SECRET,
       { expiresIn: '7d' }
     );
+
+    const result = await fastify.db.query(
+      'SELECT * FROM users WHERE email = $1',
+      [email]
+    );
+    
+    user = result.rows[0];
+    
   
     return reply.send({
       message: 'Login successful',

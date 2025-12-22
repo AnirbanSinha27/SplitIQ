@@ -1,8 +1,9 @@
 //Middleware
 import { FastifyRequest, FastifyReply } from 'fastify';
 import jwt from 'jsonwebtoken';
+require('dotenv').config({path:'../../../.env.development'});
 
-const JWT_SECRET = 'dev-secret';
+const JWT_SECRET = "dev-jwt-secret";
 
 export async function authMiddleware(
   request: FastifyRequest,

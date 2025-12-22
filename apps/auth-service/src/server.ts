@@ -1,11 +1,13 @@
 import Fastify from 'fastify';
 import healthRoutes from './routes/health';
 import authRoutes from './routes/auth';
+import db from './plugins/db';
 
 const fastify = Fastify({
   logger: true,
 });
 
+fastify.register(db);
 fastify.register(healthRoutes);
 fastify.register(authRoutes, { prefix: '/auth' });
 
