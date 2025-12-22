@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { authMiddleware } from '../plugins/middleware.auth';
 
 const users: {
   email: string;
@@ -65,5 +66,15 @@ export default async function authRoutes(fastify: FastifyInstance) {
       accessToken,
       refreshToken,
     });
-  });  
+  });
+  
+  fastify.get(
+    '/me',
+    { preHandler: authMiddleware },
+    async (request) => {
+      return {
+        user: request.user,
+      };
+    }
+  );
 }
