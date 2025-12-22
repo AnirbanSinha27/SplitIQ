@@ -3,35 +3,37 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { authMiddleware } from '../plugins/middleware.auth';
 
-const users: {
-  email: string;
-  password: string;
-}[] = [];
-
-const JWT_SECRET = 'dev-secret';
+const JWT_SECRET = 'dev-secret'; // move to env later
 
 export default async function authRoutes(fastify: FastifyInstance) {
+
+  // --------------------
+  // REGISTER
+  // --------------------
   fastify.post('/register', async (request, reply) => {
-    const { email, password } = request.body as any;
-  
+    const { email, password } = request.body as {
+      email: string;
+      password: string;
+    };
+
     if (!email || !password) {
       return reply.status(400).send({ message: 'Email and password required' });
     }
-  
-    const exists = users.find(u => u.email === email);
-    if (exists) {
+
+    // check if user exists
+    const existingUser = await fastify.db.query(
+      'SELECT id FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (existingUser.rows.length > 0) {
       return reply.status(409).send({ message: 'User already exists' });
     }
-  
-    const hashedPassword = await bcrypt.hash(password, 10);
-  
-    users.push({
-      email,
-      password: hashedPassword,
-    });
 
-    const result = await fastify.db.query(
-      'INSERT INTO users (email, password) VALUES ($1, $2) RETURNING id, email',
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await fastify.db.query(
+      'INSERT INTO users (email, password) VALUES ($1, $2)',
       [email, hashedPassword]
     );
 
@@ -39,48 +41,54 @@ export default async function authRoutes(fastify: FastifyInstance) {
       message: 'User registered successfully',
     });
   });
-  
 
+  // --------------------
+  // LOGIN
+  // --------------------
   fastify.post('/login', async (request, reply) => {
-    const { email, password } = request.body as any;
-  
-    let user = users.find(u => u.email === email);
+    const { email, password } = request.body as {
+      email: string;
+      password: string;
+    };
+
+    const result = await fastify.db.query(
+      'SELECT id, email, password FROM users WHERE email = $1',
+      [email]
+    );
+
+    const user = result.rows[0];
+
     if (!user) {
       return reply.status(401).send({ message: 'Invalid credentials' });
     }
-  
+
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
       return reply.status(401).send({ message: 'Invalid credentials' });
     }
-  
+
     const accessToken = jwt.sign(
-      { email },
+      { userId: user.id, email: user.email },
       JWT_SECRET,
       { expiresIn: '15m' }
     );
-  
+
     const refreshToken = jwt.sign(
-      { email },
+      { userId: user.id },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    const result = await fastify.db.query(
-      'SELECT * FROM users WHERE email = $1',
-      [email]
-    );
-    
-    user = result.rows[0];
-    
-  
     return reply.send({
       message: 'Login successful',
       accessToken,
       refreshToken,
     });
   });
-  
+
+  // --------------------
+  // ME (PROTECTED)
+  // --------------------
   fastify.get(
     '/me',
     { preHandler: authMiddleware },

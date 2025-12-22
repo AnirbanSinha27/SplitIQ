@@ -1,7 +1,16 @@
+import path from 'path'
+import dotenv from 'dotenv'
 import Fastify from 'fastify';
 import healthRoutes from './routes/health';
 import authRoutes from './routes/auth';
 import db from './plugins/db';
+
+dotenv.config({
+  path: path.resolve(__dirname, '../../../.env'),
+});
+
+console.log('CWD:', process.cwd());
+console.log('DATABASE_URL:', process.env.DATABASE_URL);
 
 const fastify = Fastify({
   logger: true,
