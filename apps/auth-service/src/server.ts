@@ -9,8 +9,8 @@ dotenv.config({
   path: path.resolve(__dirname, '../../../.env'),
 });
 
-console.log('CWD:', process.cwd());
-console.log('DATABASE_URL:', process.env.DATABASE_URL);
+console.log('JWT_SECRET loaded:', !!process.env.JWT_SECRET);
+
 
 const fastify = Fastify({
   logger: true,

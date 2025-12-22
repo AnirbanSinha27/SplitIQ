@@ -3,7 +3,6 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { authMiddleware } from '../plugins/middleware.auth';
 
-const JWT_SECRET = process.env.JWT_SECRET!; // move to env later
 
 export default async function authRoutes(fastify: FastifyInstance) {
 
@@ -69,13 +68,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
     const accessToken = jwt.sign(
       { userId: user.id, email: user.email },
-      JWT_SECRET,
+      process.env.JWT_SECRET as string,
       { expiresIn: '15m' }
     );
 
     const refreshToken = jwt.sign(
       { userId: user.id },
-      JWT_SECRET,
+      process.env.JWT_SECRET as string,
       { expiresIn: '7d' }
     );
 
