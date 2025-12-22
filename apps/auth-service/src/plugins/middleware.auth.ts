@@ -2,7 +2,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = "dev-jwt-secret";
+const JWT_SECRET = process.env.JWT_SECRET!;
 
 export async function authMiddleware(
   request: FastifyRequest,

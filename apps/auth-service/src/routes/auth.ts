@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { authMiddleware } from '../plugins/middleware.auth';
 
-const JWT_SECRET = 'dev-secret'; // move to env later
+const JWT_SECRET = process.env.JWT_SECRET!; // move to env later
 
 export default async function authRoutes(fastify: FastifyInstance) {
 
