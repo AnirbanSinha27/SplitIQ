@@ -4,12 +4,11 @@ import Fastify from 'fastify';
 import healthRoutes from './routes/health';
 import authRoutes from './routes/auth';
 import db from './plugins/db';
+import { registerErrorHandler } from '@splitiq/errors';
 
 dotenv.config({
   path: path.resolve(__dirname, '../../../.env'),
 });
-
-console.log('JWT_SECRET loaded:', !!process.env.JWT_SECRET);
 
 
 const fastify = Fastify({
@@ -19,6 +18,7 @@ const fastify = Fastify({
 fastify.register(db);
 fastify.register(healthRoutes);
 fastify.register(authRoutes, { prefix: '/auth' });
+registerErrorHandler(fastify);
 
 const start = async () => {
   try {

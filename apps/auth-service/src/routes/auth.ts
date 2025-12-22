@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { authMiddleware } from '../plugins/middleware.auth';
+import { authMiddleware } from '@splitiq/auth';
 
 
 export default async function authRoutes(fastify: FastifyInstance) {

@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
-import { authMiddleware } from '../plugins/middleware.auth';
+import { authMiddleware } from '@splitiq/auth';
+import { createGroupSchema, inviteMemberSchema } from '@splitiq/validation';
 
 export default async function groupRoutes(fastify: FastifyInstance) {
 
@@ -12,12 +13,17 @@ export default async function groupRoutes(fastify: FastifyInstance) {
     '/',
     { preHandler: authMiddleware },
     async (request, reply) => {
-      const { name } = request.body as { name: string };
-      const userId = request.user.userId;
+      const parsed = createGroupSchema.safeParse(request.body);
 
-      if (!name) {
-        return reply.status(400).send({ message: 'Group name is required' });
+      if (!parsed.success) {
+        return reply.status(400).send({
+          success: false,
+          message: parsed.error.errors[0].message,
+        });
       }
+
+      const { name } = parsed.data;
+      const userId = request.user.userId;
 
       const groupResult = await fastify.db.query(
         `INSERT INTO groups (name, created_by)
@@ -50,12 +56,17 @@ export default async function groupRoutes(fastify: FastifyInstance) {
     { preHandler: authMiddleware },
     async (request, reply) => {
       const { groupId } = request.params as { groupId: string };
-      const { email } = request.body as { email: string };
-      const inviterId = request.user.userId;
+      const parsed = inviteMemberSchema.safeParse(request.body);
 
-      if (!email) {
-        return reply.status(400).send({ message: 'Email is required' });
+      if (!parsed.success) {
+        return reply.status(400).send({
+          success: false,
+          message: parsed.error.errors[0].message,
+        });
       }
+
+      const { email } = parsed.data;
+      const inviterId = request.user.userId;
 
       // Check inviter role
       const roleCheck = await fastify.db.query(

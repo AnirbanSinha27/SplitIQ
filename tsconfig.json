@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@splitiq/auth": ["packages/auth"],
+      "@splitiq/errors": ["packages/errors"],
+      "@splitiq/response": ["packages/response"],
+      "@splitiq/validation": ["packages/validation"]
+    }
+  }
+}
