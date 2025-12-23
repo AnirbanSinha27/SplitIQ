@@ -121,4 +121,109 @@ export default async function expenseRoutes(fastify: FastifyInstance) {
       }
     }
   );
+
+  fastify.post(
+    '/items',
+    { preHandler: authMiddleware },
+    async (request, reply) => {
+      const { groupId, title, paidBy, items } = request.body as any;
+      const creatorId = request.user.userId;
+
+      if (!items || items.length === 0) {
+        return reply.status(400).send({ message: 'Items required' });
+      }
+
+      const client = await fastify.db.connect();
+
+      try {
+        await client.query('BEGIN');
+
+        // 1️⃣ Create expense
+        const expenseRes = await client.query(
+          `INSERT INTO expenses (group_id, created_by, title)
+           VALUES ($1, $2, $3)
+           RETURNING id`,
+          [groupId, creatorId, title]
+        );
+
+        const expenseId = expenseRes.rows[0].id;
+
+        // 2️⃣ Calculate totals per user
+        const userTotals: Record<string, number> = {};
+        let totalAmount = 0;
+
+        for (const item of items) {
+          const { name, amount, sharedBy } = item;
+
+          totalAmount += amount;
+
+          const base = Math.floor((amount / sharedBy.length) * 100) / 100;
+          let remainder = amount - base * sharedBy.length;
+
+          sharedBy.forEach((userId: string, idx: number) => {
+            let share = base;
+            if (idx === sharedBy.length - 1) {
+              share += remainder;
+            }
+            userTotals[userId] = (userTotals[userId] || 0) + share;
+          });
+        }
+
+        // 3️⃣ Create version
+        const versionRes = await client.query(
+          `INSERT INTO expense_versions
+           (expense_id, total_amount, paid_by)
+           VALUES ($1, $2, $3)
+           RETURNING id`,
+          [expenseId, totalAmount, paidBy]
+        );
+
+        const versionId = versionRes.rows[0].id;
+
+        // 4️⃣ Insert items
+        for (const item of items) {
+          await client.query(
+            `INSERT INTO expense_items
+             (expense_version_id, name, amount)
+             VALUES ($1, $2, $3)`,
+            [versionId, item.name, item.amount]
+          );
+        }
+
+        // 5️⃣ Insert splits
+        for (const [userId, amount] of Object.entries(userTotals)) {
+          await client.query(
+            `INSERT INTO expense_splits
+             (expense_version_id, user_id, amount_owed)
+             VALUES ($1, $2, $3)`,
+            [versionId, userId, amount]
+          );
+        }
+
+        // 6️⃣ Update expense pointer
+        await client.query(
+          `UPDATE expenses
+           SET current_version_id = $1
+           WHERE id = $2`,
+          [versionId, expenseId]
+        );
+
+        await client.query('COMMIT');
+
+        return reply.status(201).send({
+          expenseId,
+          versionId,
+          totalAmount,
+          splits: userTotals,
+        });
+      } catch (err: any) {
+        await client.query('ROLLBACK');
+        return reply.status(400).send({
+          message: err.message || 'Failed to create item-based expense',
+        });
+      } finally {
+        client.release();
+      }
+    }
+  );
 }
