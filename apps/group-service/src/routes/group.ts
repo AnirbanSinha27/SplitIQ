@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { authMiddleware } from '@splitiq/auth';
 import { createGroupSchema, inviteMemberSchema } from '@splitiq/validation';
+import { registerErrorHandler } from '@splitiq/errors';
 
 export default async function groupRoutes(fastify: FastifyInstance) {
 
@@ -18,7 +19,7 @@ export default async function groupRoutes(fastify: FastifyInstance) {
       if (!parsed.success) {
         return reply.status(400).send({
           success: false,
-          message: parsed.error.errors[0].message,
+          message: parsed.error.issues[0].message,
         });
       }
 
@@ -61,7 +62,7 @@ export default async function groupRoutes(fastify: FastifyInstance) {
       if (!parsed.success) {
         return reply.status(400).send({
           success: false,
-          message: parsed.error.errors[0].message,
+          message: parsed.error.issues[0].message,
         });
       }
 
