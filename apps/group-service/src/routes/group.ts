@@ -139,4 +139,38 @@ export default async function groupRoutes(fastify: FastifyInstance) {
       return groups.rows;
     }
   );
+
+  fastify.get(
+    '/:groupId/balances',
+    { preHandler: authMiddleware },
+    async (request, reply) => {
+      const { groupId } = request.params as { groupId: string };
+
+      const balances = await fastify.db.query(
+        `
+        SELECT
+          u.id AS user_id,
+          COALESCE(SUM(
+            CASE
+              WHEN ev.paid_by = u.id THEN ev.total_amount
+              ELSE 0
+            END
+          ), 0) -
+          COALESCE(SUM(es.amount_owed), 0) AS balance
+        FROM users u
+        JOIN group_members gm ON gm.user_id = u.id
+        LEFT JOIN expenses e ON e.group_id = gm.group_id
+        LEFT JOIN expense_versions ev ON ev.id = e.current_version_id
+        LEFT JOIN expense_splits es
+          ON es.expense_version_id = ev.id
+         AND es.user_id = u.id
+        WHERE gm.group_id = $1
+        GROUP BY u.id
+        `,
+        [groupId]
+      );
+
+      return reply.send(balances.rows);
+    }
+  );
 }
