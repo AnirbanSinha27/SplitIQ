@@ -226,4 +226,126 @@ export default async function expenseRoutes(fastify: FastifyInstance) {
       }
     }
   );
+
+  fastify.post(
+    '/:expenseId/edit',
+    { preHandler: authMiddleware },
+    async (request, reply) => {
+      const { expenseId } = request.params as { expenseId: string };
+      const { paidBy, items, note } = request.body as any;
+      const editorId = request.user.userId;
+  
+      const client = await fastify.db.connect();
+  
+      try {
+        await client.query('BEGIN');
+  
+        // 1️⃣ Ensure expense exists
+        const expenseRes = await client.query(
+          `SELECT id FROM expenses WHERE id = $1`,
+          [expenseId]
+        );
+  
+        if (expenseRes.rows.length === 0) {
+          throw new Error('Expense not found');
+        }
+  
+        // 2️⃣ Recalculate totals from items
+        const userTotals: Record<string, number> = {};
+        let totalAmount = 0;
+  
+        for (const item of items) {
+          totalAmount += item.amount;
+  
+          const base = Math.floor(
+            (item.amount / item.sharedBy.length) * 100
+          ) / 100;
+  
+          let remainder =
+            item.amount - base * item.sharedBy.length;
+  
+          item.sharedBy.forEach((uid: string, idx: number) => {
+            let share = base;
+            if (idx === item.sharedBy.length - 1) {
+              share += remainder;
+            }
+            userTotals[uid] = (userTotals[uid] || 0) + share;
+          });
+        }
+  
+        // 3️⃣ Insert new version
+        const versionRes = await client.query(
+          `INSERT INTO expense_versions
+           (expense_id, total_amount, paid_by, note)
+           VALUES ($1, $2, $3, $4)
+           RETURNING id`,
+          [expenseId, totalAmount, paidBy, note]
+        );
+  
+        const versionId = versionRes.rows[0].id;
+  
+        // 4️⃣ Insert new items
+        for (const item of items) {
+          await client.query(
+            `INSERT INTO expense_items
+             (expense_version_id, name, amount)
+             VALUES ($1, $2, $3)`,
+            [versionId, item.name, item.amount]
+          );
+        }
+  
+        // 5️⃣ Insert new splits
+        for (const [uid, amt] of Object.entries(userTotals)) {
+          await client.query(
+            `INSERT INTO expense_splits
+             (expense_version_id, user_id, amount_owed)
+             VALUES ($1, $2, $3)`,
+            [versionId, uid, amt]
+          );
+        }
+  
+        // 6️⃣ Repoint expense
+        await client.query(
+          `UPDATE expenses
+           SET current_version_id = $1
+           WHERE id = $2`,
+          [versionId, expenseId]
+        );
+  
+        await client.query('COMMIT');
+  
+        return reply.send({
+          expenseId,
+          newVersionId: versionId,
+          totalAmount,
+        });
+      } catch (err: any) {
+        await client.query('ROLLBACK');
+        return reply.status(400).send({
+          message: err.message || 'Failed to edit expense',
+        });
+      } finally {
+        client.release();
+      }
+    }
+  );
+  
+  fastify.get(
+    '/:expenseId/history',
+    { preHandler: authMiddleware },
+    async (request) => {
+      const { expenseId } = request.params as { expenseId: string };
+  
+      const history = await fastify.db.query(
+        `SELECT id, total_amount, paid_by, note, created_at
+         FROM expense_versions
+         WHERE expense_id = $1
+         ORDER BY created_at DESC`,
+        [expenseId]
+      );
+  
+      return history.rows;
+    }
+  );
+  
 }
