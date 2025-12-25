@@ -5,7 +5,8 @@
       "@splitiq/auth": ["packages/auth"],
       "@splitiq/errors": ["packages/errors"],
       "@splitiq/response": ["packages/response"],
-      "@splitiq/validation": ["packages/validation"]
+      "@splitiq/validation": ["packages/validation"],
+      "@splitiq/events": ["packages/events"]
     }
   }
 }

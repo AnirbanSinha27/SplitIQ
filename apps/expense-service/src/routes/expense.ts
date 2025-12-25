@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { authMiddleware } from '@splitiq/auth';
+import {NotificationEvent} from '@splitiq/validation/notification'
 
 export default async function expenseRoutes(fastify: FastifyInstance) {
 
@@ -105,6 +106,19 @@ export default async function expenseRoutes(fastify: FastifyInstance) {
         );
 
         await client.query('COMMIT');
+        const event: NotificationEvent = {
+          type: 'EXPENSE_CREATED',
+          groupId,
+          actorId: request.user.userId,
+          expenseId,
+          createdAt: new Date().toISOString(),
+        };
+        
+        await fastify.redis.lpush(
+          'notification-queue',
+          JSON.stringify(event)
+        );
+        
 
         return reply.status(201).send({
           expenseId,
@@ -209,6 +223,19 @@ export default async function expenseRoutes(fastify: FastifyInstance) {
         );
 
         await client.query('COMMIT');
+        const event: NotificationEvent = {
+          type: 'EXPENSE_CREATED',
+          groupId,
+          actorId: request.user.userId,
+          expenseId,
+          createdAt: new Date().toISOString(),
+        };
+        
+        await fastify.redis.lpush(
+          'notification-queue',
+          JSON.stringify(event)
+        );
+        
 
         return reply.status(201).send({
           expenseId,
@@ -242,13 +269,15 @@ export default async function expenseRoutes(fastify: FastifyInstance) {
   
         // 1️⃣ Ensure expense exists
         const expenseRes = await client.query(
-          `SELECT id FROM expenses WHERE id = $1`,
+          `SELECT id, group_id FROM expenses WHERE id = $1`,
           [expenseId]
         );
   
         if (expenseRes.rows.length === 0) {
           throw new Error('Expense not found');
         }
+
+        const groupId = expenseRes.rows[0].group_id;
   
         // 2️⃣ Recalculate totals from items
         const userTotals: Record<string, number> = {};
@@ -313,6 +342,19 @@ export default async function expenseRoutes(fastify: FastifyInstance) {
         );
   
         await client.query('COMMIT');
+        const event: NotificationEvent = {
+          type: 'EXPENSE_EDITED',
+          groupId,
+          actorId: request.user.userId,
+          expenseId,
+          createdAt: new Date().toISOString(),
+        };
+        
+        await fastify.redis.lpush(
+          'notification-queue',
+          JSON.stringify(event)
+        );
+        
   
         return reply.send({
           expenseId,
