@@ -194,6 +194,16 @@ export default async function groupRoutes(fastify: FastifyInstance) {
     { preHandler: authMiddleware },
     async (request) => {
       const { groupId } = request.params as { groupId: string };
+      const cacheKey = `group:${groupId}:settlements`;
+
+    // 1️⃣ Try Redis first
+    const cached = await fastify.redis.get(cacheKey);
+    if (cached) {
+      console.log('[REDIS HIT] settlements');
+      return JSON.parse(cached);
+    }
+
+    console.log('[REDIS MISS] settlements');
   
       const balancesRes = await fastify.db.query(
         `
@@ -224,7 +234,17 @@ export default async function groupRoutes(fastify: FastifyInstance) {
         balance: Number(r.balance),
       }));
   
-      return computeSettlements(balances);
+      const settlements = computeSettlements(balances);
+
+    // 4️⃣ Cache result (TTL = 60s)
+    await fastify.redis.set(
+      cacheKey,
+      JSON.stringify(settlements),
+      'EX',
+      60
+    );
+
+    return settlements;
     }
   );
 }
