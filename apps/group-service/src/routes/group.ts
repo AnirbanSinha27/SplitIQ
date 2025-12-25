@@ -145,6 +145,14 @@ export default async function groupRoutes(fastify: FastifyInstance) {
     { preHandler: authMiddleware },
     async (request, reply) => {
       const { groupId } = request.params as { groupId: string };
+      const cacheKey = `balances:${groupId}`;
+
+      // 1️⃣ Try cache
+      const cached = await fastify.redis.get(cacheKey);
+
+    if (cached) {
+      return JSON.parse(cached);
+    }
 
       const balances = await fastify.db.query(
         `
@@ -168,6 +176,13 @@ export default async function groupRoutes(fastify: FastifyInstance) {
         GROUP BY u.id
         `,
         [groupId]
+      );
+
+      await fastify.redis.set(
+        cacheKey,
+        JSON.stringify(balances.rows),
+        'EX',
+        60
       );
 
       return reply.send(balances.rows);

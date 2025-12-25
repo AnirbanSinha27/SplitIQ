@@ -10,6 +10,7 @@ import Fastify from 'fastify';
 import db from './plugins/db';
 import healthRoutes from './routes/health';
 import expenseRoutes from './routes/expense';
+import redis from './plugins/redis';
 
 const fastify = Fastify({ logger: true });
 registerErrorHandler(fastify);
@@ -17,5 +18,7 @@ registerErrorHandler(fastify);
 fastify.register(db);
 fastify.register(healthRoutes);
 fastify.register(expenseRoutes, { prefix: '/expenses' });
+fastify.register(redis);
+
 
 fastify.listen({ port: 3003 });

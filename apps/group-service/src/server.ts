@@ -10,11 +10,13 @@ import Fastify from 'fastify';
 import db from './plugins/db';
 import healthRoutes from './routes/health';
 import groupRoutes from './routes/group';
+import redis from './plugins/redis';
 
 const fastify = Fastify({ logger: true });
 registerErrorHandler(fastify);
 
 fastify.register(db);
+fastify.register(redis);
 fastify.register(healthRoutes);
 fastify.register(groupRoutes, { prefix: '/groups' });
 
