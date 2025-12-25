@@ -12,4 +12,11 @@ export type NotificationEvent =
       actorId: string;
       expenseId: string;
       createdAt: string;
+    }
+  | {
+      type: 'PAYMENT_REMINDER';
+      groupId: string;
+      userId: string;
+      amount: number;
+      createdAt: string;
     };

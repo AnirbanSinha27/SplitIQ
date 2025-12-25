@@ -5,6 +5,7 @@ import healthRoutes from './routes/health';
 import authRoutes from './routes/auth';
 import db from './plugins/db';
 import { registerErrorHandler } from '@splitiq/errors';
+import rateLimit from '@fastify/rate-limit'
 
 dotenv.config({
   path: path.resolve(__dirname, '../../../.env'),
@@ -23,6 +24,10 @@ registerErrorHandler(fastify);
 const start = async () => {
   try {
     await fastify.listen({ port: 3001 });
+    await fastify.register(rateLimit, {
+      max: 100,        // requests
+      timeWindow: '1 minute',
+    });
     console.log('Auth service running on port 3001');
   } catch (err) {
     fastify.log.error(err);

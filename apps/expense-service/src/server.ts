@@ -11,6 +11,7 @@ import db from './plugins/db';
 import healthRoutes from './routes/health';
 import expenseRoutes from './routes/expense';
 import redis from './plugins/redis';
+import  rateLimit  from '@fastify/rate-limit';
 
 const fastify = Fastify({ logger: true });
 registerErrorHandler(fastify);
@@ -21,4 +22,18 @@ fastify.register(expenseRoutes, { prefix: '/expenses' });
 fastify.register(redis);
 
 
-fastify.listen({ port: 3003 });
+const start = async () => {
+  try {
+    await fastify.listen({ port: 3003 });
+    await fastify.register(rateLimit, {
+      max: 100,        // requests
+      timeWindow: '1 minute',
+    });
+    console.log('Expense service running on port 3003');
+  } catch (err) {
+    fastify.log.error(err);
+    process.exit(1);
+  }
+};
+
+start();

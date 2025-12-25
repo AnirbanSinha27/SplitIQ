@@ -11,6 +11,7 @@ import db from './plugins/db';
 import healthRoutes from './routes/health';
 import groupRoutes from './routes/group';
 import redis from './plugins/redis';
+import rateLimit from '@fastify/rate-limit';
 
 const fastify = Fastify({ logger: true });
 registerErrorHandler(fastify);
@@ -20,4 +21,18 @@ fastify.register(redis);
 fastify.register(healthRoutes);
 fastify.register(groupRoutes, { prefix: '/groups' });
 
-fastify.listen({ port: 3002 });
+const start = async () => {
+  try {
+    await fastify.listen({ port: 3002 });
+    await fastify.register(rateLimit, {
+      max: 100,        // requests
+      timeWindow: '1 minute',
+    });
+    console.log('Group service running on port 3002');
+  } catch (err) {
+    fastify.log.error(err);
+    process.exit(1);
+  }
+};
+
+start();
