@@ -14,6 +14,10 @@ import redis from './plugins/redis';
 import  rateLimit  from '@fastify/rate-limit';
 
 const fastify = Fastify({ logger: true });
+fastify.register(rateLimit, {
+  max: 100,        // requests
+  timeWindow: '1 minute',
+});
 registerErrorHandler(fastify);
 
 fastify.register(db);
@@ -25,10 +29,6 @@ fastify.register(redis);
 const start = async () => {
   try {
     await fastify.listen({ port: 3003 });
-    await fastify.register(rateLimit, {
-      max: 100,        // requests
-      timeWindow: '1 minute',
-    });
     console.log('Expense service running on port 3003');
   } catch (err) {
     fastify.log.error(err);

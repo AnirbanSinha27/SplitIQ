@@ -16,6 +16,12 @@ const fastify = Fastify({
   logger: true,
 });
 
+// Register rate limit BEFORE listen
+fastify.register(rateLimit, {
+  max: 100,        // requests
+  timeWindow: '1 minute',
+});
+
 fastify.register(db);
 fastify.register(healthRoutes);
 fastify.register(authRoutes, { prefix: '/auth' });
@@ -24,10 +30,6 @@ registerErrorHandler(fastify);
 const start = async () => {
   try {
     await fastify.listen({ port: 3001 });
-    await fastify.register(rateLimit, {
-      max: 100,        // requests
-      timeWindow: '1 minute',
-    });
     console.log('Auth service running on port 3001');
   } catch (err) {
     fastify.log.error(err);

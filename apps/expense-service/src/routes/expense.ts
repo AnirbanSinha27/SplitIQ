@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { authMiddleware } from '@splitiq/auth';
 import {NotificationEvent} from '@splitiq/validation/notification'
+import { randomUUID } from 'crypto';
 
 export default async function expenseRoutes(fastify: FastifyInstance) {
 
@@ -387,6 +388,181 @@ export default async function expenseRoutes(fastify: FastifyInstance) {
       );
   
       return history.rows;
+    }
+  );
+
+  fastify.post(
+    '/draft/from-ocr',
+    { preHandler: authMiddleware },
+    async (request, reply) => {
+      const { groupId, parsed } = request.body as any;
+  
+      const draftId = randomUUID();
+  
+      const draft = {
+        draftId,
+        groupId,
+        createdBy: request.user.userId,
+        items: parsed.items,
+        tax: parsed.tax,
+        discount: parsed.discount,
+        total: parsed.total,
+        confidence: parsed.confidence,
+        createdAt: new Date().toISOString(),
+      };
+  
+      await fastify.redis.set(
+        `expense-draft:${draftId}`,
+        JSON.stringify(draft),
+        'EX',
+        600 // 10 minutes
+      );
+  
+      return reply.send({
+        draftId,
+        draft,
+      });
+    }
+  );
+
+  fastify.get(
+    '/draft/:draftId',
+    { preHandler: authMiddleware },
+    async (request, reply) => {
+      const { draftId } = request.params as any;
+  
+      const cached = await fastify.redis.get(
+        `expense-draft:${draftId}`
+      );
+  
+      if (!cached) {
+        return reply.status(404).send({
+          message: 'Draft expired or not found',
+        });
+      }
+  
+      return JSON.parse(cached);
+    }
+  );
+  
+  fastify.post(
+    '/draft/:draftId/confirm',
+    { preHandler: authMiddleware },
+    async (request, reply) => {
+      const { draftId } = request.params as { draftId: string };
+  
+      const client = await fastify.db.connect();
+  
+      try {
+        // 1️⃣ Fetch draft from Redis
+        const cached = await fastify.redis.get(
+          `expense-draft:${draftId}`
+        );
+  
+        if (!cached) {
+          return reply.status(404).send({
+            message: 'Draft expired or not found',
+          });
+        }
+  
+        const draft = JSON.parse(cached);
+  
+        await client.query('BEGIN');
+  
+        // 2️⃣ Calculate totals & splits
+        const userTotals: Record<string, number> = {};
+        let totalAmount = 0;
+  
+        for (const item of draft.items) {
+          totalAmount += item.amount;
+  
+          // For now: split equally among all members later
+          const share = item.amount;
+          const uid = draft.createdBy;
+  
+          userTotals[uid] =
+            (userTotals[uid] || 0) + share;
+        }
+  
+        // 3️⃣ Insert expense
+        const expenseRes = await client.query(
+          `INSERT INTO expenses (group_id, created_by,title)
+           VALUES ($1, $2,$3)
+           RETURNING id`,
+          [draft.groupId, draft.createdBy,'Scanned Bill']
+        );
+  
+        const expenseId = expenseRes.rows[0].id;
+  
+        // 4️⃣ Insert expense version
+        const versionRes = await client.query(
+          `INSERT INTO expense_versions
+           (expense_id, total_amount, paid_by, note)
+           VALUES ($1, $2, $3, $4)
+           RETURNING id`,
+          [
+            expenseId,
+            totalAmount,
+            draft.createdBy,
+            'Created via OCR',
+          ]
+        );
+  
+        const versionId = versionRes.rows[0].id;
+  
+        // 5️⃣ Insert items
+        for (const item of draft.items) {
+          await client.query(
+            `INSERT INTO expense_items
+             (expense_version_id, name, amount)
+             VALUES ($1, $2, $3)`,
+            [versionId, item.name, item.amount]
+          );
+        }
+  
+        // 6️⃣ Insert splits
+        for (const [uid, amt] of Object.entries(
+          userTotals
+        )) {
+          await client.query(
+            `INSERT INTO expense_splits
+             (expense_version_id, user_id, amount_owed)
+             VALUES ($1, $2, $3)`,
+            [versionId, uid, amt]
+          );
+        }
+  
+        // 7️⃣ Update current version
+        await client.query(
+          `UPDATE expenses
+           SET current_version_id = $1
+           WHERE id = $2`,
+          [versionId, expenseId]
+        );
+  
+        await client.query('COMMIT');
+  
+        // 8️⃣ Delete draft
+        await fastify.redis.del(
+          `expense-draft:${draftId}`
+        );
+  
+        return reply.send({
+          message: 'Expense created from draft',
+          expenseId,
+          versionId,
+          totalAmount,
+        });
+      } catch (err: any) {
+        await client.query('ROLLBACK');
+        return reply.status(400).send({
+          message:
+            err.message ||
+            'Failed to confirm expense draft',
+        });
+      } finally {
+        client.release();
+      }
     }
   );
   
