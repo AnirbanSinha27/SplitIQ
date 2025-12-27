@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { extractTextFromImage } from '../services/ocr.service';
 import { parseBill } from '../services/parser.service';
+import { withTimeout } from '../plugins/timeout';
 
 export default async function ocrRoutes(
   fastify: FastifyInstance
@@ -16,7 +17,7 @@ export default async function ocrRoutes(
 
     const buffer = await data.toBuffer();
 
-    const text = await extractTextFromImage(buffer);
+    const text = await withTimeout(extractTextFromImage(buffer),8000);
     const parsed = parseBill(text);
 
     return reply.send({
