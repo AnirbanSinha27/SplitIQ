@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { authMiddleware } from '@splitiq/auth';
 
 
+
 export default async function authRoutes(fastify: FastifyInstance) {
 
   // --------------------

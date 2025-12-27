@@ -10,6 +10,7 @@ import Fastify from 'fastify';
 import db from './plugins/db';
 import healthRoutes from './routes/health';
 import expenseRoutes from './routes/expense';
+import quickSettleRoutes from './routes/quick-settle';
 import redis from './plugins/redis';
 import  rateLimit  from '@fastify/rate-limit';
 
@@ -23,6 +24,7 @@ registerErrorHandler(fastify);
 fastify.register(db);
 fastify.register(healthRoutes);
 fastify.register(expenseRoutes, { prefix: '/expenses' });
+fastify.register(quickSettleRoutes);
 fastify.register(redis);
 
 
