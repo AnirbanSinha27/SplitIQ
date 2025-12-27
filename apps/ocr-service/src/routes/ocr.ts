@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { extractTextFromImage } from '../services/ocr.service';
 import { parseBill } from '../services/parser.service';
 import { withTimeout } from '../plugins/timeout';
+import { retry } from '../plugins/retry';
 
 export default async function ocrRoutes(
   fastify: FastifyInstance
@@ -17,12 +18,35 @@ export default async function ocrRoutes(
 
     const buffer = await data.toBuffer();
 
-    const text = await withTimeout(extractTextFromImage(buffer),8000);
-    const parsed = parseBill(text);
+    try {
+      const text = await retry(()=>
+        withTimeout(extractTextFromImage(buffer)
+      ,8000),2
+      );
+      const parsed = parseBill(text);
+      return reply.send({
+        success:true,
+        rawText: text,
+        parsed,
+      });
 
-    return reply.send({
-      rawText: text,
-      parsed,
-    });
+    } catch (err) {
+      fastify.log.error(
+        { err },
+        'OCR failed'
+      );
+      return reply.send({
+        success: false,
+        message:
+          'Could not scan bill. Please add expense manually.',
+        parsed: {
+          items: [],
+          tax: null,
+          discount: null,
+          total: null,
+          confidence: 0,
+        },
+      });
+    }
   });
 }
