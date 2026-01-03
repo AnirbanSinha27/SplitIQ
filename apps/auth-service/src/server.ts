@@ -6,6 +6,8 @@ import authRoutes from './routes/auth';
 import db from './plugins/db';
 import { registerErrorHandler } from '@splitiq/errors';
 import rateLimit from '@fastify/rate-limit'
+import cors from '@fastify/cors';
+import cookie from '@fastify/cookie'
 
 dotenv.config({
   path: path.resolve(__dirname, '../../../.env'),
@@ -14,6 +16,14 @@ dotenv.config({
 
 const fastify = Fastify({
   logger: true,
+});
+
+fastify.register(cookie);
+
+//cors
+fastify.register(cors, {
+  origin: 'http://localhost:3000',
+  credentials: true,
 });
 
 // Register rate limit BEFORE listen

@@ -50,41 +50,61 @@ export default async function authRoutes(fastify: FastifyInstance) {
       email: string;
       password: string;
     };
-
+  
     const result = await fastify.db.query(
       'SELECT id, email, password FROM users WHERE email = $1',
       [email]
     );
-
+  
     const user = result.rows[0];
-
+  
     if (!user) {
-      return reply.status(401).send({ message: 'Invalid credentials' });
+      return reply
+        .status(401)
+        .send({ message: 'Invalid credentials' });
     }
-
-    const isValid = await bcrypt.compare(password, user.password);
+  
+    const isValid = await bcrypt.compare(
+      password,
+      user.password
+    );
+  
     if (!isValid) {
-      return reply.status(401).send({ message: 'Invalid credentials' });
+      return reply
+        .status(401)
+        .send({ message: 'Invalid credentials' });
     }
-
+  
     const accessToken = jwt.sign(
       { userId: user.id, email: user.email },
       process.env.JWT_SECRET as string,
       { expiresIn: '15m' }
     );
-
+  
     const refreshToken = jwt.sign(
       { userId: user.id },
       process.env.JWT_SECRET as string,
       { expiresIn: '7d' }
     );
-
+  
+    // ✅ SET COOKIES (THIS IS THE KEY PART)
+    reply
+      .setCookie('accessToken', accessToken, {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+      })
+      .setCookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+      });
+  
     return reply.send({
       message: 'Login successful',
-      accessToken,
-      refreshToken,
     });
   });
+  
 
   // --------------------
   // ME (PROTECTED)
