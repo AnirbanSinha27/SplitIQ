@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, GROUP_API } from '../api';
 
 export type Balance = {
@@ -52,5 +53,51 @@ export function useGroupSettlements(groupId: string) {
         `/groups/${groupId}/settlements`
       ),
     enabled: !!groupId,
+  });
+}
+
+export function useCreateGroup() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (name: string) => {
+      return apiFetch(
+        GROUP_API!,
+        '/groups',
+        {
+          method: 'POST',
+          body: JSON.stringify({ name }),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['groups'],
+      });
+    },
+  });
+}
+
+/**
+ * INVITE MEMBER
+ */
+export function useInviteMember(groupId: string) {
+  return useMutation({
+    mutationFn: async (email: string) => {
+      return apiFetch(
+        GROUP_API!,
+        `/groups/${groupId}/invite`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ email }),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    },
   });
 }
