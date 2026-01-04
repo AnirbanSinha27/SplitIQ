@@ -104,6 +104,37 @@ export default async function authRoutes(fastify: FastifyInstance) {
       message: 'Login successful',
     });
   });
+
+  fastify.post('/refresh', async (request, reply) => {
+    const refreshToken = request.cookies.refreshToken;
+  
+    if (!refreshToken) {
+      return reply.status(401).send({ message: 'No refresh token' });
+    }
+  
+    try {
+      const payload = jwt.verify(
+        refreshToken,
+        process.env.JWT_SECRET as string
+      ) as { userId: string };
+  
+      const newAccessToken = jwt.sign(
+        { userId: payload.userId },
+        process.env.JWT_SECRET as string,
+        { expiresIn: '15m' }
+      );
+  
+      reply.setCookie('accessToken', newAccessToken, {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+      });
+  
+      return reply.send({ message: 'Token refreshed' });
+    } catch {
+      return reply.status(401).send({ message: 'Invalid refresh token' });
+    }
+  });
   
 
   // --------------------

@@ -1,13 +1,15 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import * as jwt from 'jsonwebtoken';
+import { TokenExpiredError } from 'jsonwebtoken'
 
 export async function authMiddleware(
   request: FastifyRequest,
   reply: FastifyReply
 ) {
-  const token = request.cookies?.accessToken;
+  const accessToken = request.cookies?.accessToken;
+  const refreshToken = request.cookies?.refreshToken;
 
-  if (!token) {
+  if (!accessToken) {
     return reply.status(401).send({
       success: false,
       message: 'Unauthorized',
@@ -16,12 +18,55 @@ export async function authMiddleware(
 
   try {
     const decoded = jwt.verify(
-      token,
+      accessToken,
       process.env.JWT_SECRET as string
-    ) as any;
+    );
 
     request.user = decoded;
-  } catch {
+    return;
+  } catch (err) {
+    // 👇 ONLY try refresh if token expired
+    if (
+      err instanceof TokenExpiredError &&
+      refreshToken
+    ) {
+      try {
+        const refreshPayload = jwt.verify(
+          refreshToken,
+          process.env.JWT_SECRET as string
+        ) as any;
+
+        const newAccessToken = jwt.sign(
+          {
+            userId: refreshPayload.userId,
+          },
+          process.env.JWT_SECRET as string,
+          { expiresIn: '15m' }
+        );
+
+        reply.setCookie(
+          'accessToken',
+          newAccessToken,
+          {
+            httpOnly: true,
+            sameSite: 'lax',
+            path: '/',
+          }
+        );
+
+        request.user = {
+          userId: refreshPayload.userId,
+        };
+
+        return;
+      } catch {
+        return reply.status(401).send({
+          success: false,
+          message: 'Invalid refresh token',
+        });
+      }
+    }
+
     return reply.status(401).send({
       success: false,
       message: 'Invalid or expired token',
