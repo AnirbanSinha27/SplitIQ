@@ -12,6 +12,8 @@ import healthRoutes from './routes/health';
 import groupRoutes from './routes/group';
 import redis from './plugins/redis';
 import rateLimit from '@fastify/rate-limit';
+import cors from '@fastify/cors';
+import cookie from '@fastify/cookie'
 
 const fastify = Fastify({ logger: true });
 fastify.register(rateLimit, {
@@ -19,6 +21,14 @@ fastify.register(rateLimit, {
   timeWindow: '1 minute',
 });
 registerErrorHandler(fastify);
+
+fastify.register(cookie);
+
+//cors
+fastify.register(cors, {
+  origin: 'http://localhost:3000',
+  credentials: true,
+});
 
 fastify.register(db);
 fastify.register(redis);

@@ -1,20 +1,22 @@
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL;
+export const AUTH_API =
+  process.env.NEXT_PUBLIC_AUTH_API;
 
-export async function apiFetch(
-  path: string,
-  options?: RequestInit
-) {
-  const res = await fetch(`${API_BASE}${path}`, {
+export const GROUP_API =
+  process.env.NEXT_PUBLIC_GROUP_API;
+
+export const EXPENSE_API =
+  process.env.NEXT_PUBLIC_EXPENSE_API;
+
+export async function apiFetch<T>(
+  baseUrl: string,
+  path: string
+): Promise<T> {
+  const res = await fetch(`${baseUrl}${path}`, {
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    ...options,
   });
 
   if (!res.ok) {
-    throw new Error('API error');
+    throw new Error('API request failed');
   }
 
   return res.json();

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Providers } from "./providers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,7 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "SplitIQ",
-  description: "A smart group expense management platform that lets users split expenses fairly, upload or scan bills, automatically extract items, GST, and discounts using AI, and compute optimal settlements — built with a microservices architecture.",
+  description:
+    "A smart group expense management platform that lets users split expenses fairly, upload or scan bills, automatically extract items, GST, and discounts using AI, and compute optimal settlements — built with a microservices architecture.",
 };
 
 export default function RootLayout({
@@ -27,7 +29,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

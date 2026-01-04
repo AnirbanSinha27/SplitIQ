@@ -1,40 +1,40 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/auth/register`,
+        `${process.env.NEXT_PUBLIC_AUTH_API}/auth/register`,
         {
-          method: 'POST',
-          credentials: 'include',
+          method: "POST",
+          credentials: "include",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({ email, password }),
-        }
+        },
       );
 
       if (!res.ok) {
-        throw new Error('Registration failed');
+        throw new Error("Registration failed");
       }
 
-      router.push('/login');
+      router.push("/login");
     } catch (err: any) {
-      setError(err.message || 'Registration failed');
+      setError(err.message || "Registration failed");
     } finally {
       setLoading(false);
     }
@@ -48,16 +48,14 @@ export default function RegisterPage() {
       >
         <h1 className="text-xl font-semibold">Register</h1>
 
-        {error && (
-          <p className="text-sm text-red-600">{error}</p>
-        )}
+        {error && <p className="text-sm text-red-600">{error}</p>}
 
         <input
           type="email"
           placeholder="Email"
           className="w-full border p-2 rounded"
           value={email}
-          onChange={e => setEmail(e.target.value)}
+          onChange={(e) => setEmail(e.target.value)}
           required
         />
 
@@ -66,7 +64,7 @@ export default function RegisterPage() {
           placeholder="Password"
           className="w-full border p-2 rounded"
           value={password}
-          onChange={e => setPassword(e.target.value)}
+          onChange={(e) => setPassword(e.target.value)}
           required
         />
 
@@ -74,7 +72,7 @@ export default function RegisterPage() {
           disabled={loading}
           className="w-full bg-black text-white py-2 rounded"
         >
-          {loading ? 'Creating account...' : 'Register'}
+          {loading ? "Creating account..." : "Register"}
         </button>
       </form>
     </div>

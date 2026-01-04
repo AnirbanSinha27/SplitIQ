@@ -5,22 +5,21 @@ export async function authMiddleware(
   request: FastifyRequest,
   reply: FastifyReply
 ) {
-  const authHeader = request.headers.authorization;
+  const token = request.cookies?.accessToken;
 
-  if (!authHeader) {
+  if (!token) {
     return reply.status(401).send({
       success: false,
-      message: 'Authorization token missing',
+      message: 'Unauthorized',
     });
   }
-
-  const token = authHeader.split(' ')[1];
 
   try {
     const decoded = jwt.verify(
       token,
       process.env.JWT_SECRET as string
-    );
+    ) as any;
+
     request.user = decoded;
   } catch {
     return reply.status(401).send({

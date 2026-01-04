@@ -1,40 +1,40 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
+        `${process.env.NEXT_PUBLIC_AUTH_API}/auth/login`,
         {
-          method: 'POST',
-          credentials: 'include',
+          method: "POST",
+          credentials: "include",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({ email, password }),
-        }
+        },
       );
 
       if (!res.ok) {
-        throw new Error('Invalid credentials');
+        throw new Error("Invalid credentials");
       }
 
-      router.push('/dashboard');
+      router.push("/dashboard");
     } catch (err: any) {
-      setError(err.message || 'Login failed');
+      setError(err.message || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -48,16 +48,14 @@ export default function LoginPage() {
       >
         <h1 className="text-xl font-semibold">Login</h1>
 
-        {error && (
-          <p className="text-sm text-red-600">{error}</p>
-        )}
+        {error && <p className="text-sm text-red-600">{error}</p>}
 
         <input
           type="email"
           placeholder="Email"
           className="w-full border p-2 rounded"
           value={email}
-          onChange={e => setEmail(e.target.value)}
+          onChange={(e) => setEmail(e.target.value)}
           required
         />
 
@@ -66,7 +64,7 @@ export default function LoginPage() {
           placeholder="Password"
           className="w-full border p-2 rounded"
           value={password}
-          onChange={e => setPassword(e.target.value)}
+          onChange={(e) => setPassword(e.target.value)}
           required
         />
 
@@ -74,7 +72,7 @@ export default function LoginPage() {
           disabled={loading}
           className="w-full bg-black text-white py-2 rounded"
         >
-          {loading ? 'Logging in...' : 'Login'}
+          {loading ? "Logging in..." : "Login"}
         </button>
       </form>
     </div>
